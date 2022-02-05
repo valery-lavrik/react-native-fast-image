@@ -26,6 +26,7 @@
     "react-native": "src/index",
     "files": [
         "android",
+        "src",
         "!android/build",
         "ios",
         "!ios/build",
