@@ -1,8 +1,12 @@
 package com.dylanvann.fastimage.custom;
 
+import androidx.annotation.NonNull;
+
 import com.dylanvann.fastimage.custom.persistence.ObjectBox;
 
 import java.io.IOException;
+
+import javax.annotation.Nullable;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -17,12 +21,11 @@ public class EtagRequester {
      * @param url
      * @param callback
      */
-    public static void requestEtag(final String url, final EtagCallback callback) {
-        final String prevEtag = ObjectBox.getEtagByUrl(url);
-
+    public static void requestEtag(@NonNull final String url, @Nullable final String prevEtag, @NonNull final EtagCallback callback) {
         OkHttpClient client = SharedOkHttpClient.getInstance(null).getClient();
         Request.Builder request = new Request.Builder()
-                .url(url);
+                .url(url)
+                .head();
 
         if (prevEtag != null) {
             request.addHeader("If-None-Match", prevEtag);

@@ -19,7 +19,6 @@ import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.ObjectKey;
 import com.dylanvann.fastimage.custom.EtagCallback;
 import com.dylanvann.fastimage.custom.EtagRequester;
-import com.dylanvann.fastimage.custom.PersistEtagCallbackWrapper;
 import com.dylanvann.fastimage.custom.persistence.ObjectBox;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
@@ -86,7 +85,6 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
             return;
         }
 
-        //final GlideUrl glideUrl = FastImageViewConverter.getGlideUrl(view.getContext(), source);
         final FastImageSource imageSource = FastImageViewConverter.getImageSource(view.getContext(), source);
         if (imageSource.getUri().toString().length() == 0) {
             ThemedReactContext context = (ThemedReactContext) view.getContext();
@@ -117,11 +115,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         final FastImageSource imageSource = FastImageViewConverter.getImageSource(view.getContext(), source);
         final GlideUrl glideUrl = imageSource.getGlideUrl();
 
-        // Cancel existing request.
         view.glideUrl = glideUrl;
-//        if (requestManager != null) {
-//            requestManager.clear(view);
-//        }
 
         final String key = glideUrl.toStringUrl();
         FastImageOkHttpProgressGlideModule.expect(key, this);
@@ -138,6 +132,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         final int viewId = view.getId();
         eventEmitter.receiveEvent(viewId, REACT_ON_LOAD_START_EVENT, new WritableNativeMap());
 
+        final RequestOptions options = FastImageViewConverter.getOptions(context, imageSource, source);
         if (requestManager != null) {
             final String url = imageSource.getGlideUrl().toStringUrl();
             if (!url.startsWith("http")) {
@@ -149,118 +144,102 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
                         //    - android.resource://
                         //    - data:image/png;base64
                         .load(imageSource.getSourceForLoad())
-                        .apply(FastImageViewConverter.getOptions(context, imageSource, source))
+                        .apply(options)
                         .listener(new FastImageRequestListener(key))
                         .into(view);
                 return;
             }
 
-            final RequestOptions options = FastImageViewConverter.getOptions(context, imageSource, source);
-
-            // getEtag handles persistence of etag
-            getEtag(url, new EtagCallback() {
-                @Override
-                public void onError(String error) {
-                    loadImage(view, url, null, options, key);
-                }
-
-                @Override
-                public void onEtag(@Nullable final String etag) {
-                    loadImage(view, url, etag, options, key);
-                }
-            });
+            loadImage(view, url, options, key);
         }
     }
 
     /**
-     * Refreshes an image. Won't do anything if etag hasn't changed.
-     * When there was a new image the new image will be shown + the image
-     * and etag cache will be updated.
-     * @param url
-     */
-    private void refresh(final FastImageViewWithUrl view, final String url) {
-        EtagRequester.requestEtag(url, new PersistEtagCallbackWrapper(url, new EtagCallback() {
-                    @Override
-                    public void onError(final String error) {
-                        loadImage(view, url, null, null, null);
-                    }
+     * This will make a head request to the URL to get the ETAG.
+     * The request is then forwarded to glide, which uses the
+     * ETAG as signature, see {@link #loadImageWithSignature}.
+     **/
+    private void loadImage(final FastImageViewWithUrl view, final String url, @Nullable final RequestOptions options, final @Nullable String key) {
+        String prevEtag = ObjectBox.getEtagByUrl(url);
 
-                    @Override
-                    public void onEtag(final String etag) {
-                        loadImage(view, url, etag, null, null);
-                    }
-                })
-        );
-    }
-
-    /**
-     *
-     * @param view
-     * @param url
-     * @param etag Optional
-     * @param options Optional
-     * @param key Optional, when set it will emit events
-     */
-    private void loadImage(final FastImageViewWithUrl view, final String url, @Nullable final String etag, @Nullable final RequestOptions options, final @Nullable String key) {
-        getActivityFromContext(view.getContext()).runOnUiThread(new Runnable() {
+        // We need to make a head request to the URL with the ETAG attached.
+        // - When we get a new etag Glide will send out another request
+        // - If the signature (etag) doesn't change, Glide won't bother sending out a request
+        EtagRequester.requestEtag(url, prevEtag, new EtagCallback() {
             @Override
-            public void run() {
-                if (requestManager == null) {
-                    Log.e(FastImageViewManager.class.getSimpleName(), "Can't refresh as requestManager was null!");
-                    return;
-                }
+            public void onEtag(String etag) {
+                // Note: here at this point the etag in the ObjectBox has been updated
+                // to the new etag. That's why we pass down the the previous.
+                loadImageWithSignature(view, url, etag, prevEtag, options, key);
+            }
 
-
-                RequestBuilder<Drawable> thumbnailRequest = requestManager
-                        .load(url);
-
-                // add etag as signature when its set
-                String prevEtag = ObjectBox.getEtagByUrl(url);
-                if (prevEtag != null) {
-                    thumbnailRequest = thumbnailRequest.signature(new ObjectKey(prevEtag));
-                }
-
-                RequestBuilder<Drawable> imageRequest = requestManager
-                        .load(url)
-                        .thumbnail(thumbnailRequest)
-                        .skipMemoryCache(true);
-
-                if (etag != null) {
-                    imageRequest = imageRequest.signature(new ObjectKey(etag));
-                } else if (prevEtag != null) {
-                    // in case we received no etag (e.g. loading error due to no network)
-                    // we still want to consider getting cache with the prev etag.
-                    imageRequest = imageRequest.signature(new ObjectKey(prevEtag));
-                }
-
-                if (options != null) {
-                    imageRequest = imageRequest.apply(options);
-                }
-
-                if (key != null) {
-                    imageRequest = imageRequest.listener(new FastImageRequestListener(key));
-                }
-
-                // finally, load the image
-                imageRequest.into(view);
+            @Override
+            public void onError(String error) {
+                loadImageWithSignature(view, url, prevEtag, prevEtag, options, key);
             }
         });
     }
 
     /**
-     * Returns the etag from cache. If there is no cached etag it will request
-     * the server to get it, save it to the cache, and return it.
-     * @param url
-     * @param callback
+     * This loads the actual image either from server or from cache
+     * depending on whether a cache entry for the given signature
+     * exists yet.
+     * If a prev signature is passed it will show the image for the
+     * url + prevSignature as long as the new image from the url (with
+     * the new signature) is being loaded.
      */
-    private void getEtag(String url, EtagCallback callback) {
-        String etag = ObjectBox.getEtagByUrl(url);
+    private void loadImageWithSignature(
+            final FastImageViewWithUrl view,
+            final String url,
+            @Nullable String signature,
+            @Nullable String prevSignature,
+            @Nullable final RequestOptions options,
+            @Nullable final String key)
+    {
+        getActivityFromContext(view.getContext()).runOnUiThread(() -> {
+            if (requestManager == null) {
+                Log.e(FastImageViewManager.class.getSimpleName(), "Can't refresh as requestManager was null!");
+                return;
+            }
 
-        if (etag == null) {
-            EtagRequester.requestEtag(url, new PersistEtagCallbackWrapper(url, callback));
-        } else {
-            callback.onEtag(etag);
-        }
+            // cancel any previous requests
+            requestManager.clear(view);
+
+            // Request the new image
+            RequestBuilder<Drawable> imageRequest = requestManager
+                    .load(url);
+
+            // When we have a previous signature we want to show the previous
+            // image, until the new one is loaded. This is done with a
+            // thumbnail request. Without this there would be a "white flickering"
+            // until the (new) image is loaded.
+            if (prevSignature != null) {
+                // Create a "thumbnail" which is literally the cached image while we load the new image
+                RequestBuilder<Drawable> thumbnailRequest = requestManager
+                        .load(url);
+                thumbnailRequest = thumbnailRequest.signature(new ObjectKey(prevSignature));
+                imageRequest = imageRequest
+                        .thumbnail(thumbnailRequest)
+                        .skipMemoryCache(true);
+            }
+
+            if (signature != null) {
+                imageRequest = imageRequest.signature(new ObjectKey(signature));
+            }
+            if (options != null) {
+                imageRequest = imageRequest.apply(options);
+            }
+            if (key != null) {
+                imageRequest = imageRequest.listener(new FastImageRequestListener(key));
+            }
+
+            // finally, load the image
+            imageRequest.into(view);
+        });
+    }
+
+    private void refresh(final FastImageViewWithUrl view, final ReadableMap source) {
+        load(view, source);
     }
 
     @ReactProp(name = "tintColor", customType = "Color")
@@ -389,8 +368,7 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         switch (commandId) {
             case FORCE_REFRESH_IMAGE: {
                 if (root.source != null) {
-                    final FastImageSource imageSource = FastImageViewConverter.getImageSource(root.getContext(), root.source);
-                    refresh(root, imageSource.getGlideUrl().toStringUrl());
+                    refresh(root, root.source);
                 }
                 return;
             }
