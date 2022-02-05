@@ -163,13 +163,13 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         String prevEtag = ObjectBox.getEtagByUrl(url);
 
         // We need to make a head request to the URL with the ETAG attached.
-        // - When we get a new etag Glide will send out another request
-        // - If the signature (etag) doesn't change, Glide won't bother sending out a request
+        // - When we get a new etag Glide will send out another request (as signature has changed)
+        // - If the signature (etag) didn't change, Glide won't bother sending out a request
         EtagRequester.requestEtag(url, prevEtag, new EtagCallback() {
             @Override
             public void onEtag(String etag) {
                 // Note: here at this point the etag in the ObjectBox has been updated
-                // to the new etag. That's why we pass down the the previous.
+                // to the new etag. That's why we pass down the the previous reference.
                 loadImageWithSignature(view, url, etag, prevEtag, options, key);
             }
 
@@ -219,9 +219,11 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
                         .load(url);
                 thumbnailRequest = thumbnailRequest.signature(new ObjectKey(prevSignature));
                 imageRequest = imageRequest
-                        .thumbnail(thumbnailRequest)
-                        .skipMemoryCache(true);
+                        .thumbnail(thumbnailRequest);
             }
+            // important: otherwise it may take the memory cache image for the
+            // same url and save that as new result for the new signature
+            imageRequest = imageRequest.skipMemoryCache(true);
 
             if (signature != null) {
                 imageRequest = imageRequest.signature(new ObjectKey(signature));
