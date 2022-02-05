@@ -162,6 +162,20 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
     private void loadImage(final FastImageViewWithUrl view, final String url, @Nullable final RequestOptions options, final @Nullable String key) {
         String prevEtag = ObjectBox.getEtagByUrl(url);
 
+        // when we have a prevEtag there will be (very likely) a cached version
+        // of the image that we want to display even before sending out any req
+        if (prevEtag != null && requestManager != null) {
+            RequestBuilder<Drawable> builder = requestManager
+                    .load(url)
+                    .onlyRetrieveFromCache(true)
+                    .signature(new ObjectKey(prevEtag))
+                    .listener(new FastImageRequestListener(key));
+            if (options != null) {
+                builder = builder.apply(options);
+            }
+            builder.into(view);
+        }
+
         // We need to make a head request to the URL with the ETAG attached.
         // - When we get a new etag Glide will send out another request (as signature has changed)
         // - If the signature (etag) didn't change, Glide won't bother sending out a request
@@ -216,7 +230,8 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
             if (prevSignature != null) {
                 // Create a "thumbnail" which is literally the cached image while we load the new image
                 RequestBuilder<Drawable> thumbnailRequest = requestManager
-                        .load(url);
+                        .load(url)
+                        .onlyRetrieveFromCache(true);
                 thumbnailRequest = thumbnailRequest.signature(new ObjectKey(prevSignature));
                 imageRequest = imageRequest
                         .thumbnail(thumbnailRequest);
