@@ -72,13 +72,36 @@ This fast-image fork comes with a few more features:
 - [x] Antialiasing for borderRadius on Android
 - [x] A bit faster re-renders
 
-## Usage
+## Installation
 
 **Note: You must be using React Native 0.60.0 or higher to use the most recent version of `react-native-fast-image`.**
 
 ```bash
-npm i @cuvent/react-native-fast-image
+yarn add @cuvent/react-native-fast-image
+// OR: npm i @cuvent/react-native-fast-image
 ```
+
+### Extra step for android
+
+For ETag caching to work we need to persist the ETag with the urls. For that we use ObjectBox.
+To enable ObjectBox add the following to your `MainApplication.java`:
+
+```java
+import com.dylanvann.fastimage.custom.persistence.ObjectBox;
+// ...
+
+public class MainApplication extends Application implements ReactApplication {
+  @Override
+  public void onCreate() {
+    super.onCreate();
+    ObjectBox.init(this); // <- ⚠️ Add this
+  }
+
+  // ...
+}
+```
+
+## Usage
 
 ```jsx
 import FastImage from '@cuvent/react-native-fast-image'
