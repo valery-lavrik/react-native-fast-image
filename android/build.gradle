@@ -54,13 +54,15 @@ repositories {
     mavenCentral()
 }
 
-def glideVersion = safeExtGet('glideVersion', '4.12.0')
+
+def glideVersion = safeExtGet('glideVersion', '4.13.1')
 
 dependencies {
     //noinspection GradleDynamicVersion
     implementation 'com.facebook.react:react-native:+'  // From node_modules
     implementation "com.github.bumptech.glide:glide:${glideVersion}"
     implementation "com.github.bumptech.glide:okhttp3-integration:${glideVersion}"
-    implementation "com.zlc.glide:webpdecoder:2.0.${glideVersion}"
+    implementation "com.github.bumptech.glide:glide:${glideVersion}"
     annotationProcessor "com.github.bumptech.glide:compiler:${glideVersion}"
 }
+
