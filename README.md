@@ -68,7 +68,7 @@ and
 **Note: You must be using React Native 0.60.0 or higher to use the most recent version of `react-native-fast-image`.**
 
 ```bash
-yarn add react-native-fast-image
+yarn add valery-lavrik/react-native-fast-image
 cd ios && pod install
 ```
 
@@ -220,6 +220,19 @@ FastImage.preload([
         headers: { Authorization: 'someAuthToken' },
     },
 ])
+```
+
+### `FastImage.preload: (source[]) => void`
+
+Preload images to display later. e.g.
+
+```js
+FastImage.preloadDimension({
+	uri: 'https://facebook.github.io/react/img/logo_og.png',
+	headers: { Authorization: 'someAuthToken' },
+}).then(({width, height})=>{
+	console.log(width, height)
+})
 ```
 
 ### `FastImage.clearMemoryCache: () => Promise<void>`
