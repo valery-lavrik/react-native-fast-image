@@ -1,6 +1,7 @@
 package com.dylanvann.fastimage;
 
 import android.app.Activity;
+import java.io.File;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.model.GlideUrl;
@@ -86,7 +87,9 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 					.with(activity.getApplicationContext())
 					.load(
 						imageSource.isBase64Resource() ? imageSource.getSource() :
-						imageSource.isResource() ? imageSource.getUri() : imageSource.getGlideUrl()
+						imageSource.isLocalFile() ? new File(source.getString("uri")) : // https://stackoverflow.com/questions/32332003/glide-load-local-image-by-uri
+						imageSource.isResource() ? imageSource.getUri() : 
+						imageSource.getGlideUrl()
 					)
 					.apply(FastImageViewConverter.getOptions(activity, imageSource,  source))
 					.listener(new RequestListener<Drawable>() {
