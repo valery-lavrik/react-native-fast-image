@@ -25,7 +25,7 @@ export const PreloadExample = () => {
 
 		FastImage.preloadDimension({
 			uri: 'https://via.placeholder.com/1000x1500.png',
-			// uri: 'file:///storage/emulated/0/Download/GalleryComics_Cache_2/Image/img.com-x.life/comix/10836/207538/1655412830_0.65472600.jpg_',
+			// uri: 'file:///storage/emulated/0/Download/GalleryComics_Cache_2/Image/img.com-x.life/comix/10836/207538/111.jpg',
 			// headers: { Authorization: 'someAuthToken' },
 		}).then((obj) => {
 			console.log('width, height', obj)

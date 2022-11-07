@@ -87,7 +87,7 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 					.with(activity.getApplicationContext())
 					.load(
 						imageSource.isBase64Resource() ? imageSource.getSource() :
-						imageSource.isLocalFile() ? new File(source.getString("uri")) : // https://stackoverflow.com/questions/32332003/glide-load-local-image-by-uri
+						imageSource.isLocalFile() ? source.getString("uri") :
 						imageSource.isResource() ? imageSource.getUri() : 
 						imageSource.getGlideUrl()
 					)
