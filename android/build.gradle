@@ -53,7 +53,7 @@ repositories {
 }
 
 
-def glideVersion = safeExtGet('glideVersion', '4.13.1')
+def glideVersion = safeExtGet('glideVersion', '4.14.2')
 
 dependencies {
     //noinspection GradleDynamicVersion

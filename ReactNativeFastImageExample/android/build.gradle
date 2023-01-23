@@ -21,6 +21,26 @@ buildscript {
 
 allprojects {
     repositories {
+
+
+
+	// 	// https://stackoverflow.com/questions/74333132/task-react-native-async-storage-async-storagegeneratedebugrfile-failed
+	// 	// ------ Fix starts here
+    //     exclusiveContent {
+    //        filter {
+    //            includeGroup "com.facebook.react"
+    //        }
+    //        forRepository {
+    //            maven {
+    //                url "$rootDir/../node_modules/react-native/android"
+    //            }
+    //        }
+    //    }
+    //    // --------- Fix ends here
+
+
+
+
         maven {
             // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
             url("$rootDir/../node_modules/react-native/android")
