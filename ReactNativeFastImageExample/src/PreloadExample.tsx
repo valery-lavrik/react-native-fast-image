@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, View, PermissionsAndroid } from 'react-native'
 import SectionFlex from './SectionFlex'
 import FastImage from '@valery-lavrik/react-native-fast-image'
 import Section from './Section'
@@ -19,12 +19,21 @@ export const PreloadExample = () => {
 	const [show, setShow] = useState(false)
 	const { url, bust } = useCacheBust(IMAGE_URL)
 
-	const preload = () => {
+	const preload = async () => {
 		// FastImage.preload([{ uri: url }])
 
 
+		try {
+			await checkPermissions();
+		} catch (error) {
+			console.log('error', error);
+			return;
+		}
+
+
+
 		FastImage.preloadDimension({
-			uri: 'https://via.placeholder.com/1000x1500.png',
+			uri: 'https://via.placeholder.com/1000x1100.png',
 			// uri: 'file:///storage/emulated/0/Download/GalleryComics_Cache_2/Image/img.com-x.life/comix/10836/207538/111.jpg',
 			// headers: { Authorization: 'someAuthToken' },
 		}).then((obj) => {
@@ -85,3 +94,21 @@ const styles = StyleSheet.create({
 		width: 100,
 	},
 })
+
+
+
+
+export const checkPermissions = () => {
+	return new Promise(async function (resolve, reject) {
+		try {
+			const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
+			if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+				resolve(true);
+			} else {
+				reject('result no granted: ' + granted);
+			}
+		} catch (err) {
+			reject(err);
+		}
+	});
+};
