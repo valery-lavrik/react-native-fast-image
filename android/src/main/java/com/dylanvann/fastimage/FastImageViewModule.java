@@ -111,7 +111,7 @@ class FastImageViewModule extends ReactContextBaseJavaModule {
 							params.putInt("height", resource.getIntrinsicHeight()); 
 
 
-							String saveToFile = source.getString("saveToFile");
+							String saveToFile = String.valueOf(source.getString("saveToFile"));
 							if (saveToFile.isEmpty()) {
 								promise.resolve(params);
 								return false;
